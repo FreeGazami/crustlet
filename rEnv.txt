@@ -1,0 +1,3 @@
+blah=blah
+kernel_img=crustlet
+kernel_path=/
