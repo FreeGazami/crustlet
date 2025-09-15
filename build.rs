@@ -49,9 +49,11 @@ fn creat_passoff_env() -> Result<(), Box<dyn std::error::Error>> {
         _ => package_name,
     };
 
+    let build_triple = env::var("TARGET").expect("Tareget not set");
+
     let env_string: String = format!(
-        "PACKAGE_NAME={}\nPACKAGE_VERSION={}\nBIN_NAME={}\n",
-        package_name, package_version, bin_name
+        "PACKAGE_NAME={}\nPACKAGE_VERSION={}\nBIN_NAME={}\nTRIPLE={}\n",
+        package_name, package_version, bin_name, build_triple,
     );
     let env_path = ".env";
 

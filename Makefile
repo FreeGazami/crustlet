@@ -1,28 +1,21 @@
-.PHONY: build
+.PHONY: build create-img clean run-qemu
 
 ifneq (,$(wildcard ./.env))
 include .env
 export
 endif
 
-build:
-	cargo build --target x86_64-unknown-uefi
-ifdef PACKAGE_NAME
-	qemu-img create -f raw $(PACKAGE_NAME).img 64M
-	mkfs.fat -F 32 $(PACKAGE_NAME).img
-	mkdir efi_mount/
-	sudo mount -o loop $(PACKAGE_NAME).img efi_mount/
+IMG_NAME=$(PACKAGE_NAME)-$(TRIPLE).img
+
+# Creates a FAT32 image for UEFI boot
+create-img:
+	qemu-img create -f raw $(IMG_NAME) 64M
+	mkfs.fat -F 32 $(IMG_NAME)
+	mkdir -p efi_mount
+	sudo mount -o loop $(IMG_NAME) efi_mount
 	sudo mkdir -p efi_mount/EFI/BOOT
 	sudo cp target/x86_64-unknown-uefi/debug/$(PACKAGE_NAME).efi efi_mount/EFI/BOOT/BOOTX64.EFI
 	sudo umount efi_mount
-else
-	@echo "did not find PACKAGE_NAME defined. Skipping efi disk image generation"
-endif
 
-clean:
-	cargo clean
-
-print-env:
-	@echo "PACKAGE_NAME: $(PACKAGE_NAME)"
-	@echo "PACKAGE_VERSION: $(PACKAGE_VERSION)"
-	@echo "BIN_NAME: $(BIN_NAME)"
+run-qemu:
+	qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.4m.fd -drive file=$(IMG_NAME),format=raw -m 4G
