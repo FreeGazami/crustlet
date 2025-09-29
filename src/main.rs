@@ -7,6 +7,7 @@ use uefi::boot::{self, SearchType};
 use uefi::prelude::*;
 use uefi::proto::device_path::text::{AllowShortcuts, DevicePathToText, DisplayOnly};
 use uefi::proto::loaded_image::LoadedImage;
+use uefi::table::system_table_raw;
 use uefi::{Identify, Result};
 
 fn print_image_path() -> Result {
@@ -31,10 +32,16 @@ fn print_image_path() -> Result {
 }
 
 #[entry]
-fn main() -> Status {
+fn efi_main(mage_handle: Handle, system_table: SystemTable<Boot>) -> Status {
     uefi::helpers::init().unwrap();
 
-    print_image_path().unwrap();
+    // print_image_path().unwrap();
+
+    // load the elf format
+    let mut system_table = match system_table_raw() {
+        Some(table) => table,
+        None => return Status::NOT_FOUND,
+    };
 
     boot::stall(10_000_000);
     return Status::SUCCESS;

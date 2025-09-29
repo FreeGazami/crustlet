@@ -14,8 +14,11 @@ create-img:
 	mkdir -p efi_mount
 	sudo mount -o loop $(IMG_NAME) efi_mount
 	sudo mkdir -p efi_mount/EFI/BOOT
+	sudo mkdir -p efi_mount/crustlet/
 	sudo cp target/x86_64-unknown-uefi/debug/$(PACKAGE_NAME).efi efi_mount/EFI/BOOT/BOOTX64.EFI
+	sudo cp runtime_configs/rEnv.txt efi_mount/crustlet/rEnv.txt
 	sudo umount efi_mount
+	rm -rf efi_mount
 
 run-qemu:
 	qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.4m.fd -drive file=$(IMG_NAME),format=raw -m 4G
