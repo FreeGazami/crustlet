@@ -9,6 +9,8 @@ use uefi::proto::device_path::text::{AllowShortcuts, DevicePathToText, DisplayOn
 use uefi::proto::loaded_image::LoadedImage;
 use uefi::table::system_table_raw;
 use uefi::{Identify, Result};
+use uefi::CString16;
+use uefi::fs::{FileSystem, FileSystemResult};
 
 fn print_image_path() -> Result {
     let loaded_image = boot::open_protocol_exclusive::<LoadedImage>(boot::image_handle())?;
@@ -32,16 +34,24 @@ fn print_image_path() -> Result {
 }
 
 #[entry]
-fn efi_main(mage_handle: Handle, system_table: SystemTable<Boot>) -> Status {
+fn osloader_main() -> Status {
     uefi::helpers::init().unwrap();
 
-    // print_image_path().unwrap();
+    // let mut system_table = match system_table_raw() {
+    //     Some(table) => table,
+    //     None => return Status::NOT_FOUND,
+    // };
 
-    // load the elf format
-    let mut system_table = match system_table_raw() {
-        Some(table) => table,
-        None => return Status::NOT_FOUND,
+    let path: CString16 = CString16::try_from("gazami").unwrap();
+    let p_fs = boot::get_image_file_system(boot::image_handle()).unwrap();
+
+    let mut fs = FileSystem::new(p_fs);
+    let file_byte_vec = match fs.read(path.as_ref()) {
+        Ok(vector) => vector,
+        Err(error) => panic!("Isseu reading the file: {}", error),
     };
+
+    // read the elf header
 
     boot::stall(10_000_000);
     return Status::SUCCESS;
