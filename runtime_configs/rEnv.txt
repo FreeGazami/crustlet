@@ -1,0 +1,4 @@
+kernel_img=crustlet
+kernel_path=/
+root=/dev/sda2
+rootfstype=ext4

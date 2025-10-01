@@ -17,6 +17,7 @@ create-img:
 	sudo mkdir -p efi_mount/crustlet/
 	sudo cp target/x86_64-unknown-uefi/debug/$(PACKAGE_NAME).efi efi_mount/EFI/BOOT/BOOTX64.EFI
 	sudo cp runtime_configs/rEnv.txt efi_mount/crustlet/rEnv.txt
+	sudo cp kernel/gazami efi_mount/gazami
 	sudo umount efi_mount
 	rm -rf efi_mount
 
