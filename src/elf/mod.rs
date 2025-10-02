@@ -1,5 +1,13 @@
+#![no_std]
+#![no_main]
+#![feature(alloc_error_handler)]
 
-#[cfg(arch = "x86_64")]
+extern crate alloc;
+use alloc::vec::Vec;
+
+static C_MAGIC: u32 = 0x7f_45_4c_46;
+
+// #[cfg(arch = "x86_64")]
 #[repr(C)]
 pub struct ElfHeader {
     pub e_ident: [u8; 16],
@@ -19,7 +27,7 @@ pub struct ElfHeader {
     pub eoh: u16,
 }
 
-#[cfg(arch = "x86_64")]
+// #[cfg(arch = "x86_64")]
 #[repr(C)]
 pub struct ProgramHeader {
     pub p_type: u32,
@@ -33,7 +41,7 @@ pub struct ProgramHeader {
     pub eoh: [u8; 24],
 }
 
-#[cfg(arch = "x86_64")]
+// #[cfg(arch = "x86_64")]
 #[repr(C)]
 pub struct SectionHeader {
     sh_name: u32,
@@ -47,4 +55,29 @@ pub struct SectionHeader {
     sh_addralign: u64,
     sh_entsize: u64,
     eoh: [u8; 24],
+}
+
+impl ElfHeader {
+    pub fn new(bytes: &Vec<u8>) -> Result<&ElfHeader, uefi::Status> {
+        if bytes.len() < core::mem::size_of::<ElfHeader>() {
+            return Err(uefi::Status::BAD_BUFFER_SIZE);
+        }
+
+        let header_ref: &ElfHeader = unsafe {
+            &*(bytes.as_ptr() as *const ElfHeader)
+        };
+
+        Ok(header_ref)
+    }
+
+    pub fn check_magic(&self) -> bool {
+        let mut magic: u32 = 0;
+
+        magic |= (self.e_ident[0] as u32) << 24;
+        magic |= (self.e_ident[1] as u32) << 16;
+        magic |= (self.e_ident[2] as u32) << 8;
+        magic |= (self.e_ident[3] as u32) << 0;
+
+        return (magic == C_MAGIC);
+    }
 }

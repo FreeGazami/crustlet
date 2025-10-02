@@ -49,13 +49,20 @@ fn osloader_main() -> Status {
         Err(error) => panic!("Isseu reading the file: {}", error),
     };
 
-    let elf_header: &elf::Header = unsafe {
-        &*(bytes.as_ptr() as *const elf::Header) 
+    let elf_header: &elf::ElfHeader = unsafe {
+        match elf::ElfHeader::new(&bytes) {
+            Ok(ptr) => ptr,
+            Err(error) => return error,
+        }
     };
 
     info!("elf magic: {:x}{}{}{}", elf_header.e_ident[0], elf_header.e_ident[1] as char, elf_header.e_ident[2] as char, elf_header.e_ident[3] as char);
     info!("elf entry address: 0x{:x}", elf_header.e_entry);
     info!("endian: 0x{:x}", elf_header.e_ident[5] as u8);
+
+    if elf_header.check_magic() {
+        info!("checked the elf header magic");
+    }
 
     boot::stall(10_000_000);
     return Status::SUCCESS;
