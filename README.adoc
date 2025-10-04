@@ -6,6 +6,12 @@
 == Introduction
 
 == Prerequisites
+* Linux Host
+* Nightly Rust
+* OVMF
+* qemu (x86_64)
+** qemu-img
+** qemu-system-x86_64
 
 == Building/Compiling
 To build a base image
