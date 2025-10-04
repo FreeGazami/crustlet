@@ -56,13 +56,21 @@ fn osloader_main() -> Status {
         }
     };
 
-    info!("elf magic: {:x}{}{}{}", elf_header.e_ident[0], elf_header.e_ident[1] as char, elf_header.e_ident[2] as char, elf_header.e_ident[3] as char);
-    info!("elf entry address: 0x{:x}", elf_header.e_entry);
-    info!("endian: 0x{:x}", elf_header.e_ident[5] as u8);
-
     if elf_header.check_magic() {
         info!("checked the elf header magic");
     }
+
+    elf_header.dump_info();
+
+    // load program header into memory
+    let program_header: &elf::ProgramHeader = unsafe {
+        match elf_header.new_ph(&bytes) {
+            Ok(p_head) => p_head,
+            Err(error) => return error,
+        }
+    };
+
+    program_header.dump_info();
 
     boot::stall(10_000_000);
     return Status::SUCCESS;
