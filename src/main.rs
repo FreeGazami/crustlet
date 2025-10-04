@@ -15,6 +15,7 @@ use uefi::fs::{FileSystem, FileSystemResult};
 use elf::*;
 
 
+#[cfg(target_arch="x86_64")]
 #[entry]
 fn osloader_main() -> Status {
     uefi::helpers::init().unwrap();

@@ -9,7 +9,7 @@ use log::info;
 
 static C_MAGIC: u32 = 0x7f_45_4c_46;
 
-// #[cfg(arch = "x86_64")]
+#[cfg(target_arch="x86_64")]
 #[repr(C)]
 pub struct ElfHeader {
     pub e_ident: [u8; 16],
@@ -28,7 +28,7 @@ pub struct ElfHeader {
     pub e_shstrndx: u16,
 }
 
-// #[cfg(arch = "x86_64")]
+#[cfg(target_arch="x86_64")]
 #[repr(C)]
 pub struct ProgramHeader {
     pub p_type: u32,
@@ -41,7 +41,7 @@ pub struct ProgramHeader {
     pub p_align: u64,
 }
 
-// #[cfg(arch = "x86_64")]
+#[cfg(target_arch="x86_64")]
 #[repr(C)]
 pub struct SectionHeader {
     sh_name: u32,
@@ -57,6 +57,7 @@ pub struct SectionHeader {
 }
 
 
+#[cfg(target_arch="x86_64")]
 impl ElfHeader {
     pub fn new(bytes: &Vec<u8>) -> Result<&ElfHeader, uefi::Status> {
         if bytes.len() < core::mem::size_of::<ElfHeader>() {
@@ -81,26 +82,12 @@ impl ElfHeader {
         return magic == C_MAGIC;
     }
 
-    // pub fn new_ph(&self, file: &Vec<u8>) -> Result<&ProgramHeader, uefi::Status> {
-    //     let e_phoff: u64 = self.e_phoff;
-
-    //     let program_header = unsafe {
-    //         &*(file.as_ptr().wrapping_add(e_phoff.try_into().unwrap()) as *const ProgramHeader)
-    //     };
-
-    //     return Ok(program_header);
-    // }
-
     pub fn new_ph_table(&self, file: &Vec<u8>) -> Result<&[ProgramHeader], uefi::Status> {
         let e_phoff: u64 = self.e_phoff;
         let e_phnum: u16 = self.e_phnum;
         let e_phentsize: u16 = self.e_phentsize;
         let table_size: u64 = (e_phnum * e_phentsize).into();
 
-        // let program_header_table: &[ProgramHeader] = unsafe {
-        //     &*(file.as_ptr().wrapping_add(e_phoff.try_into().unwrap()) as *const ProgramHeader)
-        // };
-        // let program_header_table: &[ProgramHeader] = &file[]
         let program_header_table = unsafe {
             core::slice::from_raw_parts(
                 file.as_ptr().wrapping_add(
@@ -127,6 +114,8 @@ impl ElfHeader {
     }
 }
 
+
+#[cfg(target_arch="x86_64")]
 impl ProgramHeader {
     pub fn dump_info(&self) -> () {
         info!("p_type: 0x{:x}", self.p_type);
