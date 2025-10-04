@@ -1,10 +1,32 @@
 = Crustlet
-:author: Tomo Kaneko
+:Author: Tomo Kaneko
 :toc:
 :sectnums:
 
 == Introduction
 
-== Prerequisits
+== Prerequisites
 
 == Building/Compiling
+To build a base image
+[source,bash]
+----
+make build
+----
+or
+[source,bash]
+----
+cargo build
+----
+
+to create a bootable image with an ESP
+[source,bash]
+----
+make create-img
+----
+
+run image on qemu
+[source,bash]
+----
+make run-qemu
+----

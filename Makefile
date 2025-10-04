@@ -7,8 +7,14 @@ endif
 
 IMG_NAME=$(PACKAGE_NAME)-$(TRIPLE).img
 
+all: run-qemu
+
+
+build:
+	cargo build
+
 # Creates a FAT32 image for UEFI boot
-create-img:
+create-img: build
 	qemu-img create -f raw $(IMG_NAME) 64M
 	mkfs.fat -F 32 $(IMG_NAME)
 	mkdir -p efi_mount
@@ -21,5 +27,9 @@ create-img:
 	sudo umount efi_mount
 	rm -rf efi_mount
 
-run-qemu:
+run-qemu: create-img
 	qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.4m.fd -drive file=$(IMG_NAME),format=raw -m 4G
+
+clean:
+	cargo clean
+	rm -f ./*.img
