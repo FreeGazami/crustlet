@@ -20,6 +20,7 @@ use elf::*;
 fn osloader_main() -> Status {
     uefi::helpers::init().unwrap();
 
+    /* TODO: add parser, load kernel path and rootfs from rEnv.txt dynamically */
     let path: CString16 = CString16::try_from("gazami").unwrap();
     let p_fs = boot::get_image_file_system(boot::image_handle()).unwrap();
 
@@ -36,25 +37,12 @@ fn osloader_main() -> Status {
         }
     };
 
-    if elf_header.check_magic() {
-        info!("checked the elf header magic");
-    }
-
-    elf_header.dump_info();
-
-    // load program header into memory
     let ph_table: &[elf::ProgramHeader] = unsafe {
         match elf_header.new_ph_table(&bytes) {
             Ok(table) => table,
             Err(error) => return error,
         }
     };
-
-    info!("test entry[0]: 0x{:x}", ph_table[0].p_type);
-    info!("test entry[1]: 0x{:x}", ph_table[1].p_type);
-    info!("slice length:  {}", ph_table.len());
-    info!("e_phnum: {}", elf_header.e_phnum);
-
 
     boot::stall(10_000_000);
     return Status::SUCCESS;

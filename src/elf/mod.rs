@@ -9,6 +9,7 @@ use log::info;
 
 static C_MAGIC: u32 = 0x7f_45_4c_46;
 
+
 #[cfg(target_arch="x86_64")]
 #[repr(C)]
 pub struct ElfHeader {
@@ -28,6 +29,7 @@ pub struct ElfHeader {
     pub e_shstrndx: u16,
 }
 
+
 #[cfg(target_arch="x86_64")]
 #[repr(C)]
 pub struct ProgramHeader {
@@ -40,6 +42,7 @@ pub struct ProgramHeader {
     pub p_memsz: u64,
     pub p_align: u64,
 }
+
 
 #[cfg(target_arch="x86_64")]
 #[repr(C)]
@@ -68,10 +71,15 @@ impl ElfHeader {
             &*(bytes.as_ptr() as *const ElfHeader)
         };
 
-        Ok(header_ref)
+        // Verify magic beforehand
+        if !header_ref.check_magic() {
+            return Err(uefi::Status::INVALID_PARAMETER);
+        }
+
+        return Ok(header_ref);
     }
 
-    pub fn check_magic(&self) -> bool {
+    fn check_magic(&self) -> bool {
         let mut magic: u32 = 0;
 
         magic |= (self.e_ident[0] as u32) << 24;
