@@ -56,6 +56,7 @@ pub struct SectionHeader {
     sh_entsize: u64,
 }
 
+
 impl ElfHeader {
     pub fn new(bytes: &Vec<u8>) -> Result<&ElfHeader, uefi::Status> {
         if bytes.len() < core::mem::size_of::<ElfHeader>() {
@@ -80,14 +81,36 @@ impl ElfHeader {
         return magic == C_MAGIC;
     }
 
-    pub fn new_ph(&self, file: &Vec<u8>) -> Result<&ProgramHeader, uefi::Status> {
-        let e_phoff: u64 = self.e_phoff;
+    // pub fn new_ph(&self, file: &Vec<u8>) -> Result<&ProgramHeader, uefi::Status> {
+    //     let e_phoff: u64 = self.e_phoff;
 
-        let program_header = unsafe {
-            &*(file.as_ptr().wrapping_add(e_phoff.try_into().unwrap()) as *const ProgramHeader)
+    //     let program_header = unsafe {
+    //         &*(file.as_ptr().wrapping_add(e_phoff.try_into().unwrap()) as *const ProgramHeader)
+    //     };
+
+    //     return Ok(program_header);
+    // }
+
+    pub fn new_ph_table(&self, file: &Vec<u8>) -> Result<&[ProgramHeader], uefi::Status> {
+        let e_phoff: u64 = self.e_phoff;
+        let e_phnum: u16 = self.e_phnum;
+        let e_phentsize: u16 = self.e_phentsize;
+        let table_size: u64 = (e_phnum * e_phentsize).into();
+
+        // let program_header_table: &[ProgramHeader] = unsafe {
+        //     &*(file.as_ptr().wrapping_add(e_phoff.try_into().unwrap()) as *const ProgramHeader)
+        // };
+        // let program_header_table: &[ProgramHeader] = &file[]
+        let program_header_table = unsafe {
+            core::slice::from_raw_parts(
+                file.as_ptr().wrapping_add(
+                    e_phoff.try_into().unwrap(),
+                ) as *const ProgramHeader,
+                e_phnum.try_into().unwrap(),
+            )
         };
 
-        return Ok(program_header);
+        return Ok(program_header_table);
     }
 
     pub fn dump_info(&self) -> () {
@@ -101,7 +124,6 @@ impl ElfHeader {
         info!("section header string table index: {}", self.e_shstrndx);
         info!("target machine: 0x{:x}", self.e_machine);
         info!("size of elf header: {} bytes", core::mem::size_of::<ElfHeader>());
-        info!("")
     }
 }
 
