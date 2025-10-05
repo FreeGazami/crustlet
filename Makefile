@@ -9,7 +9,6 @@ IMG_NAME=$(PACKAGE_NAME)-$(TRIPLE).img
 
 all: run-qemu
 
-
 build:
 	cargo build
 

@@ -1,3 +1,7 @@
+//! File: main.rs
+//! Author: Tomo Kaneko
+//! Initial Date: 2025/10/05
+
 #![no_std]
 #![no_main]
 
@@ -17,7 +21,7 @@ use elf::*;
 
 #[cfg(target_arch="x86_64")]
 #[entry]
-fn osloader_main() -> Status {
+fn efi_main() -> Status {
     uefi::helpers::init().unwrap();
 
     /* TODO: add parser, load kernel path and rootfs from rEnv.txt dynamically */
@@ -25,6 +29,7 @@ fn osloader_main() -> Status {
     let p_fs = boot::get_image_file_system(boot::image_handle()).unwrap();
 
     let mut fs = FileSystem::new(p_fs);
+
     let bytes = match fs.read(path.as_ref()) {
         Ok(vector) => vector,
         Err(error) => panic!("Isseu reading the file: {}", error),
@@ -43,6 +48,12 @@ fn osloader_main() -> Status {
             Err(error) => return error,
         }
     };
+
+    // for item in ph_table {
+    //     info!("p_type: 0x{:x}", item.p_type);
+    // }
+
+    let ph_table = ProgramHeaderTable::new(elf_header);
 
     boot::stall(10_000_000);
     return Status::SUCCESS;

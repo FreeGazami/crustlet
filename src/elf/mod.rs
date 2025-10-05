@@ -8,6 +8,30 @@ use alloc::vec::Vec;
 use log::info;
 
 static C_MAGIC: u32 = 0x7f_45_4c_46;
+static EI_MAG0: usize = 0;
+static EI_MAG1: usize = 1;
+static EI_MAG2: usize = 2;
+static EI_MAG3: usize = 3;
+
+
+enum E_P_TYPE {
+    PT_NULL =    0x00000000,
+    PT_LOAD =    0x00000001,
+    PT_DYNAMIC = 0x00000002,
+    PT_INTERP =  0x00000003,
+    PT_NOTE =    0x00000004,
+    PT_SHLIB =   0x00000005,
+    PT_PHDR =    0x00000006,
+    PT_TLS =     0x00000007,
+    PT_LOOS =    0x60000000,
+    PT_HIOS =    0x6FFFFFFF,
+    PT_LOPROC =  0x70000000,
+    PT_HIPROC =  0x7FFFFFFF,
+}
+
+
+#[cfg(target_arch="x86_64")]
+static C_E_MACHINE: u16 = 0x3e;
 
 
 #[cfg(target_arch="x86_64")]
@@ -46,6 +70,13 @@ pub struct ProgramHeader {
 
 #[cfg(target_arch="x86_64")]
 #[repr(C)]
+pub struct ProgramHeaderTable<'a> {
+    pub entries: &'a [ProgramHeader],
+}
+
+
+#[cfg(target_arch="x86_64")]
+#[repr(C)]
 pub struct SectionHeader {
     sh_name: u32,
     sh_type: u32,
@@ -73,7 +104,20 @@ impl ElfHeader {
 
         // Verify magic beforehand
         if !header_ref.check_magic() {
+            info!(
+                "Elf header doesn't contain correct magic number: 0x{:x}{}{}{}",
+                header_ref.e_ident[EI_MAG0],
+                header_ref.e_ident[EI_MAG1] as char,
+                header_ref.e_ident[EI_MAG2] as char,
+                header_ref.e_ident[EI_MAG3] as char,
+            );
+
             return Err(uefi::Status::INVALID_PARAMETER);
+        }
+
+        if header_ref.e_machine != C_E_MACHINE {
+            info!("Elf header has incorrect e_machine: 0x{:x}", header_ref.e_machine);
+            return Err(uefi::Status::UNSUPPORTED);
         }
 
         return Ok(header_ref);
@@ -82,10 +126,10 @@ impl ElfHeader {
     fn check_magic(&self) -> bool {
         let mut magic: u32 = 0;
 
-        magic |= (self.e_ident[0] as u32) << 24;
-        magic |= (self.e_ident[1] as u32) << 16;
-        magic |= (self.e_ident[2] as u32) << 8;
-        magic |= (self.e_ident[3] as u32) << 0;
+        magic |= (self.e_ident[EI_MAG0] as u32) << 24;
+        magic |= (self.e_ident[EI_MAG1] as u32) << 16;
+        magic |= (self.e_ident[EI_MAG2] as u32) << 8;
+        magic |= (self.e_ident[EI_MAG3] as u32) << 0;
 
         return magic == C_MAGIC;
     }
@@ -125,7 +169,44 @@ impl ElfHeader {
 
 #[cfg(target_arch="x86_64")]
 impl ProgramHeader {
+    pub fn flags_executable(&self) -> bool {
+        return (self.p_flags & 0b1) != 0;
+    }
+
+    pub fn flags_writable(&self) -> bool {
+        return ((self.p_flags & 0b10) >> 1) != 0;
+    }
+
+    pub fn flags_readable(&self) -> bool {
+        return ((self.p_flags & 0b100) >> 2) != 0;
+    }
+
     pub fn dump_info(&self) -> () {
         info!("p_type: 0x{:x}", self.p_type);
+        info!("p_flags: 0b{:b}", self.p_flags);
+        info!("p_offset: 0x{:x}", self.p_offset);
+        info!("p_vaddr: 0x{:x}", self.p_vaddr);
+        info!("p_paddr: 0x{:x}", self.p_paddr);
+        info!("p_filesz: 0x{:x}", self.p_filesz);
+        info!("p_memsz: 0x{:x}", self.p_memsz);
+        info!("p_align: 0x{:x}", self.p_align);
+    }
+}
+
+#[cfg(target_arch="x86_64")]
+impl ProgramHeaderTable {
+    pub fn new(header: &ElfHeader) -> Result<ProgramHeaderTable, uefi::Status> {
+        match header.new_ph_table(&bytes) {
+            Ok(table) => return Ok(ProgramHeaderTable { entries = table }),
+            Err(error) => return Err(error),
+        }
+    }
+
+    pub fn load_segments(&self) -> uefi::Status {
+        for entry in self.entries {
+            info!("load segment...");
+        }
+
+        return uefi::Status::SUCCESS;
     }
 }
