@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(alloc_error_handler)]
 
 extern crate alloc;
 
@@ -134,13 +133,13 @@ impl ElfHeader {
         return magic == C_MAGIC;
     }
 
-    pub fn new_ph_table(&self, file: &Vec<u8>) -> Result<&[ProgramHeader], uefi::Status> {
+    pub fn new_ph_table(&self, file: &Vec<u8>) -> Result<ProgramHeaderTable<'_>, uefi::Status> {
         let e_phoff: u64 = self.e_phoff;
         let e_phnum: u16 = self.e_phnum;
         let e_phentsize: u16 = self.e_phentsize;
         let table_size: u64 = (e_phnum * e_phentsize).into();
 
-        let program_header_table = unsafe {
+        let program_header_array = unsafe {
             core::slice::from_raw_parts(
                 file.as_ptr().wrapping_add(
                     e_phoff.try_into().unwrap(),
@@ -149,7 +148,11 @@ impl ElfHeader {
             )
         };
 
-        return Ok(program_header_table);
+        return Ok(
+            ProgramHeaderTable {
+                entries: program_header_array,
+            }
+        );
     }
 
     pub fn dump_info(&self) -> () {
@@ -193,18 +196,32 @@ impl ProgramHeader {
     }
 }
 
+// Try using core::intrinsics::volatile_copy_memory
+// TODO: add error cases...
 #[cfg(target_arch="x86_64")]
-impl ProgramHeaderTable {
-    pub fn new(header: &ElfHeader) -> Result<ProgramHeaderTable, uefi::Status> {
-        match header.new_ph_table(&bytes) {
-            Ok(table) => return Ok(ProgramHeaderTable { entries = table }),
-            Err(error) => return Err(error),
+impl ProgramHeaderTable<'_> {
+    pub fn copy_memory(&self, dst: *mut u8, src: *const u8, count: usize) {
+        for i in 0..count {
+            unsafe {
+                core::ptr::write_volatile(
+                        dst.offset(i as isize),
+                        *(src.offset(i as isize)),
+                );
+            }
         }
     }
 
-    pub fn load_segments(&self) -> uefi::Status {
-        for entry in self.entries {
-            info!("load segment...");
+    pub fn load_segments(&self, file: &Vec<u8>) -> uefi::Status {
+        for (i, entry) in self.entries.iter().enumerate() {
+            if entry.p_type == E_P_TYPE::PT_LOAD as u32 {
+                info!("found loadable segment at index: {}", i);
+                info!("loading...");
+                self.copy_memory(
+                    entry.p_paddr as *mut u8,
+                    file.as_ptr().wrapping_add(entry.p_offset as usize),
+                    entry.p_memsz as usize,
+                );
+            }
         }
 
         return uefi::Status::SUCCESS;

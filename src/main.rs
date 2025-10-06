@@ -5,6 +5,7 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
 
 mod elf;
 
@@ -17,6 +18,7 @@ use uefi::{Identify, Result};
 use uefi::CString16;
 use uefi::fs::{FileSystem, FileSystemResult};
 use elf::*;
+use alloc::vec::Vec;
 
 
 #[cfg(target_arch="x86_64")]
@@ -30,7 +32,7 @@ fn efi_main() -> Status {
 
     let mut fs = FileSystem::new(p_fs);
 
-    let bytes = match fs.read(path.as_ref()) {
+    let bytes: Vec<u8> = match fs.read(path.as_ref()) {
         Ok(vector) => vector,
         Err(error) => panic!("Isseu reading the file: {}", error),
     };
@@ -42,19 +44,13 @@ fn efi_main() -> Status {
         }
     };
 
-    let ph_table: &[elf::ProgramHeader] = unsafe {
-        match elf_header.new_ph_table(&bytes) {
-            Ok(table) => table,
-            Err(error) => return error,
-        }
+    let ph_table: ProgramHeaderTable = match elf_header.new_ph_table(&bytes) {
+        Ok(table) => table,
+        Err(error) => return error,
     };
 
-    // for item in ph_table {
-    //     info!("p_type: 0x{:x}", item.p_type);
-    // }
-
-    let ph_table = ProgramHeaderTable::new(elf_header);
+    let status = ph_table.load_segments(&bytes);
 
     boot::stall(10_000_000);
-    return Status::SUCCESS;
+    return status;
 }
