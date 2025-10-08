@@ -155,6 +155,19 @@ impl ElfHeader {
         );
     }
 
+    pub fn entry_start(&self) -> () {
+        let e_entry_u: usize = self.e_entry as usize;
+        let entry_ptr = e_entry_u as *const ();
+
+        let e_fn: extern "C" fn() = unsafe { 
+            core::mem::transmute(entry_ptr)
+        };
+
+        unsafe {
+           e_fn()
+        };
+    }
+
     pub fn dump_info(&self) -> () {
         info!("elf magic: {:x}{}{}{}", self.e_ident[0], self.e_ident[1] as char, self.e_ident[2] as char, self.e_ident[3] as char);
         info!("elf entry address: 0x{:x}", self.e_entry);
@@ -214,13 +227,15 @@ impl ProgramHeaderTable<'_> {
     pub fn load_segments(&self, file: &Vec<u8>) -> uefi::Status {
         for (i, entry) in self.entries.iter().enumerate() {
             if entry.p_type == E_P_TYPE::PT_LOAD as u32 {
-                info!("found loadable segment at index: {}", i);
-                info!("loading...");
+                info!("=========== ATTEMPT LOADING ============");
+                entry.dump_info();
+                info!("ATTEMPT LOADING");
                 self.copy_memory(
                     entry.p_paddr as *mut u8,
                     file.as_ptr().wrapping_add(entry.p_offset as usize),
                     entry.p_memsz as usize,
                 );
+                info!("========================================");
             }
         }
 

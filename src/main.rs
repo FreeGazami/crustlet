@@ -19,6 +19,8 @@ use uefi::CString16;
 use uefi::fs::{FileSystem, FileSystemResult};
 use elf::*;
 use alloc::vec::Vec;
+use uefi::mem::memory_map::{MemoryMapOwned};
+use uefi::boot::{MemoryDescriptor, MemoryType};
 
 
 #[cfg(target_arch="x86_64")]
@@ -34,7 +36,10 @@ fn efi_main() -> Status {
 
     let bytes: Vec<u8> = match fs.read(path.as_ref()) {
         Ok(vector) => vector,
-        Err(error) => panic!("Isseu reading the file: {}", error),
+        Err(error) => { 
+            info!("Isseu reading the file: {}", error);
+            return uefi::Status::VOLUME_CORRUPTED;
+        },
     };
 
     let elf_header: &elf::ElfHeader = unsafe {
@@ -50,6 +55,22 @@ fn efi_main() -> Status {
     };
 
     let status = ph_table.load_segments(&bytes);
+
+    if status != uefi::Status::SUCCESS {
+        info!("Issue loading program headers!");
+        return uefi::Status::COMPROMISED_DATA;
+    }
+
+    // get memory map for runtime services
+    let runtime_mm_data: MemoryMapOwned = uefi::boot::memory_map(MemoryType::RUNTIME_SERVICES_DATA).expect("FAILED to get runtime service code memory map");
+    let runtime_mm_code: MemoryMapOwned = uefi::boot::memory_map(MemoryType::RUNTIME_SERVICES_CODE).expect("FAILED to get runtime service code memory map");
+
+    // get memory map for ACPI
+    let acpi_mm_reclaim: MemoryMapOwned = uefi::boot::memory_map(MemoryType::ACPI_RECLAIM).expect("failed to get acpi reclaim mm");
+    let acpi_mm_nvolatile: MemoryMapOwned = uefi::boot::memory_map(MemoryType::ACPI_NON_VOLATILE).expect("failed to get acpi reclaim mm");
+
+    // boot::exit_boot_services();
+    // elf_header.entry_start();
 
     boot::stall(10_000_000);
     return status;
