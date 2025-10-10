@@ -1,4 +1,5 @@
 /target
+/kernel
 .env
 *.img
-/kernel/
+*.log

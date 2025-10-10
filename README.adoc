@@ -1,6 +1,6 @@
 = Crustlet
 :Author: Tomo Kaneko
-:toc:
+:toc: left
 :sectnums:
 
 == Introduction
@@ -36,6 +36,7 @@ run image on qemu
 ----
 make run-qemu
 ----
+be noted that this generates a log file
 
 
 == Note to self

@@ -19,7 +19,7 @@ use uefi::CString16;
 use uefi::fs::{FileSystem, FileSystemResult};
 use elf::*;
 use alloc::vec::Vec;
-use uefi::mem::memory_map::{MemoryMapOwned};
+use uefi::mem::memory_map::{MemoryMapOwned, MemoryMapIter, MemoryMap};
 use uefi::boot::{MemoryDescriptor, MemoryType};
 
 
@@ -62,16 +62,11 @@ fn efi_main() -> Status {
     }
 
     // get memory map for runtime services
-    let runtime_mm_data: MemoryMapOwned = uefi::boot::memory_map(MemoryType::RUNTIME_SERVICES_DATA).expect("FAILED to get runtime service code memory map");
-    let runtime_mm_code: MemoryMapOwned = uefi::boot::memory_map(MemoryType::RUNTIME_SERVICES_CODE).expect("FAILED to get runtime service code memory map");
-
-    // get memory map for ACPI
-    let acpi_mm_reclaim: MemoryMapOwned = uefi::boot::memory_map(MemoryType::ACPI_RECLAIM).expect("failed to get acpi reclaim mm");
-    let acpi_mm_nvolatile: MemoryMapOwned = uefi::boot::memory_map(MemoryType::ACPI_NON_VOLATILE).expect("failed to get acpi reclaim mm");
+    let mm_data: MemoryMapOwned = uefi::boot::memory_map(MemoryType::LOADER_DATA).expect("FAILED memorymap");
 
     // boot::exit_boot_services();
     // elf_header.entry_start();
 
-    boot::stall(10_000_000);
+    // boot::stall(10_000_000);
     return status;
 }
