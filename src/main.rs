@@ -19,8 +19,9 @@ use uefi::CString16;
 use uefi::fs::{FileSystem, FileSystemResult};
 use elf::*;
 use alloc::vec::Vec;
-use uefi::mem::memory_map::{MemoryMapOwned, MemoryMapIter, MemoryMap};
+use uefi::mem::memory_map::{MemoryMapOwned, MemoryMapIter, MemoryMap, MemoryMapKey, MemoryMapMut};
 use uefi::boot::{MemoryDescriptor, MemoryType};
+use core::arch::asm;
 
 
 #[cfg(target_arch="x86_64")]
@@ -61,11 +62,23 @@ fn efi_main() -> Status {
         return uefi::Status::COMPROMISED_DATA;
     }
 
-    // get memory map for runtime services
-    let mm_data: MemoryMapOwned = uefi::boot::memory_map(MemoryType::LOADER_DATA).expect("FAILED memorymap");
+    let mut mm: MemoryMapOwned = unsafe {
+        boot::exit_boot_services(None)
+    };
 
-    // boot::exit_boot_services();
-    // elf_header.entry_start();
+    let mm_ptr = unsafe {
+        mm.buffer_mut().as_ptr()
+    };
+
+    // write address to register?
+    unsafe {
+        asm!{
+            "mov rsi, {0}",
+            in(reg) mm_ptr,
+        }
+    }
+
+    elf_header.entry_start();
 
     // boot::stall(10_000_000);
     return status;
