@@ -28,6 +28,7 @@ dependencies = [
  "serde",
  "toml",
  "uefi",
+ "uefi_handoff",
 ]
 
 [[package]]
@@ -236,6 +237,14 @@ checksum = "7cad96b8baaf1615d3fdd0f03d04a0b487d857c1b51b19dcbfe05e2e3c447b78"
 dependencies = [
  "bitflags",
  "uguid",
+]
+
+[[package]]
+name = "uefi_handoff"
+version = "0.1.0"
+source = "git+https://github.com/tomosnelli/uefi_handoff.git?branch=master#ab45a99c22e8d0bdb2680a9402e251d4da2f437e"
+dependencies = [
+ "uefi-raw",
 ]
 
 [[package]]
