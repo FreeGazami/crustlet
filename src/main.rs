@@ -22,12 +22,16 @@ use alloc::vec::Vec;
 use uefi::mem::memory_map::{MemoryMapOwned, MemoryMapIter, MemoryMap, MemoryMapKey, MemoryMapMut};
 use uefi::boot::{MemoryDescriptor, MemoryType};
 use core::arch::asm;
+use uefi_handoff::BootInfo;
+use core::ffi::c_void;
 
 
 #[cfg(target_arch="x86_64")]
 #[entry]
 fn efi_main() -> Status {
     uefi::helpers::init().unwrap();
+
+    info!("start?");
 
     /* TODO: add parser, load kernel path and rootfs from rEnv.txt dynamically */
     let path: CString16 = CString16::try_from("gazami").unwrap();
@@ -62,6 +66,25 @@ fn efi_main() -> Status {
         return uefi::Status::COMPROMISED_DATA;
     }
 
+    // write address to register?
+    let size = core::mem::size_of::<BootInfo>();
+    let ptr = match boot::allocate_pool(MemoryType::LOADER_DATA, size) {
+        Ok(pointer) => pointer,
+        Err(error) => return Status::ABORTED,
+    };
+
+    let boot_info = ptr.cast::<BootInfo>();
+    let system_table = match uefi::table::system_table_raw() {
+        Some(non_null) => {
+            non_null.as_ptr() as *mut u8
+        },
+        None => {
+            return Status::ABORTED;
+        }
+    };
+    let image_handle = boot::image_handle().as_ptr();
+
+    info!("calling exit_boot_services");
     let mut mm: MemoryMapOwned = unsafe {
         boot::exit_boot_services(None)
     };
@@ -70,16 +93,13 @@ fn efi_main() -> Status {
         mm.buffer_mut().as_ptr()
     };
 
-    // write address to register?
     unsafe {
-        asm!{
-            "mov rsi, {0}",
-            in(reg) mm_ptr,
-        }
+        (*boot_info.as_ptr()).image_handle = image_handle;
+        (*boot_info.as_ptr()).system_table = system_table;
+        (*boot_info.as_ptr()).mm_ptr = unsafe {mm.buffer_mut()};
     }
 
-    elf_header.entry_start();
+    elf_header.entry_start(ptr.as_ptr());
 
-    // boot::stall(10_000_000);
-    return status;
+    return Status::ABORTED;
 }

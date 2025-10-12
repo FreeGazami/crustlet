@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 log = "0.4.28"
 uefi = { version = "0.35.0", features = ["alloc", "global_allocator", "logger", "qemu"] }
+uefi_handoff = { git = "https://github.com/tomosnelli/uefi_handoff.git", branch = "master" }
 
 [profile.dev]
 panic = "abort"

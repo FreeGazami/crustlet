@@ -27,7 +27,7 @@ create-img: build
 	rm -rf efi_mount
 
 run-qemu: create-img
-	qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.4m.fd -drive file=$(IMG_NAME),format=raw -m 4G -serial file:$(shell pwd)/$(PACKAGE_NAME)-$(TRIPLE)-$(shell date +"%Y-%m-%d-%H:%M:%S").log
+	qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.4m.fd -drive file=$(IMG_NAME),format=raw -m 4G -serial file:$(shell pwd)/$(PACKAGE_NAME)-$(TRIPLE)-$(shell date +"%Y-%m-%d-%H:%M:%S").log -d exec
 
 clean:
 	cargo clean

@@ -155,16 +155,16 @@ impl ElfHeader {
         );
     }
 
-    pub fn entry_start(&self) -> () {
+    pub fn entry_start(&self, boot_info: *mut u8) -> () {
         let e_entry_u: usize = self.e_entry as usize;
         let entry_ptr = e_entry_u as *const ();
 
-        let e_fn: extern "C" fn() = unsafe { 
+        let e_fn: extern "C" fn(*mut u8) = unsafe { 
             core::mem::transmute(entry_ptr)
         };
 
         unsafe {
-           e_fn()
+           e_fn(boot_info)
         };
     }
 
@@ -211,6 +211,7 @@ impl ProgramHeader {
 
 // Try using core::intrinsics::volatile_copy_memory
 // TODO: add error cases...
+// TODO: add 0 stuffing / null out to the segment using filesz and memsz
 #[cfg(target_arch="x86_64")]
 impl ProgramHeaderTable<'_> {
     pub fn copy_memory(&self, dst: *mut u8, src: *const u8, count: usize) {
@@ -227,15 +228,11 @@ impl ProgramHeaderTable<'_> {
     pub fn load_segments(&self, file: &Vec<u8>) -> uefi::Status {
         for (i, entry) in self.entries.iter().enumerate() {
             if entry.p_type == E_P_TYPE::PT_LOAD as u32 {
-                info!("=========== ATTEMPT LOADING ============");
-                entry.dump_info();
-                info!("ATTEMPT LOADING");
                 self.copy_memory(
                     entry.p_paddr as *mut u8,
                     file.as_ptr().wrapping_add(entry.p_offset as usize),
-                    entry.p_memsz as usize,
+                    entry.p_filesz as usize,
                 );
-                info!("========================================");
             }
         }
 
