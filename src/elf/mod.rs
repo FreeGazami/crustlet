@@ -155,16 +155,16 @@ impl ElfHeader {
         );
     }
 
-    pub fn entry_start(&self, boot_info: *mut u8) -> () {
+    pub fn entry_start(&self, handoff_addr: u64) -> () {
         let e_entry_u: usize = self.e_entry as usize;
         let entry_ptr = e_entry_u as *const ();
 
-        let e_fn: extern "C" fn(*mut u8) = unsafe { 
+        let e_fn: extern "C" fn(u64) = unsafe { 
             core::mem::transmute(entry_ptr)
         };
 
         unsafe {
-           e_fn(boot_info)
+           e_fn(handoff_addr)
         };
     }
 
@@ -214,25 +214,16 @@ impl ProgramHeader {
 // TODO: add 0 stuffing / null out to the segment using filesz and memsz
 #[cfg(target_arch="x86_64")]
 impl ProgramHeaderTable<'_> {
-    pub fn copy_memory(&self, dst: *mut u8, src: *const u8, count: usize) {
-        for i in 0..count {
-            unsafe {
-                core::ptr::write_volatile(
-                        dst.offset(i as isize),
-                        *(src.offset(i as isize)),
-                );
-            }
-        }
-    }
-
     pub fn load_segments(&self, file: &Vec<u8>) -> uefi::Status {
         for (i, entry) in self.entries.iter().enumerate() {
             if entry.p_type == E_P_TYPE::PT_LOAD as u32 {
-                self.copy_memory(
-                    entry.p_paddr as *mut u8,
-                    file.as_ptr().wrapping_add(entry.p_offset as usize),
-                    entry.p_filesz as usize,
-                );
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        file.as_ptr().wrapping_add(entry.p_offset as usize),
+                        entry.p_paddr as *mut u8,
+                        entry.p_filesz as usize,
+                    );
+                }
             }
         }
 
