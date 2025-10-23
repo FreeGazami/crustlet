@@ -72,8 +72,6 @@ fn efi_main() -> Status {
         Err(error) => return Status::ABORTED,
     };
 
-    info!("allocated handoff: {}", ptr.as_ptr() as u64);
-
     let boot_info: *mut BootInfo = ptr.as_ptr() as *mut BootInfo;
 
     let system_table = match uefi::table::system_table_raw() {
@@ -91,7 +89,6 @@ fn efi_main() -> Status {
 
     let image_handle = boot::image_handle().as_ptr() as *mut c_void;
 
-    info!("calling exit_bootservices");
     let mut mm: MemoryMapOwned = unsafe {
         boot::exit_boot_services(None)
     };
@@ -105,15 +102,6 @@ fn efi_main() -> Status {
         (*boot_info).runtime_services = runtime_services;
         (*boot_info).mm_ptr = mm_ptr;
     }
-
-    // let b_system_table: *mut SystemTable = unsafe {(*boot_info.as_ptr()).system_table as *mut SystemTable};
-    // let runtime_services: *mut RuntimeServices = unsafe {(*b_system_table).runtime_services};
-
-    // let typed_runtime: *mut RuntimeServices = runtime_services as *mut RuntimeServices;
-
-    // unsafe {
-    //     ((*typed_runtime).reset_system)(ResetType::COLD, Status::SUCCESS, 0, core::ptr::null())
-    // }
 
     unsafe {
         elf_header.entry_start(boot_info as *mut c_void)
