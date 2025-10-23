@@ -3,6 +3,8 @@
 
 extern crate alloc;
 
+use core::ffi::c_void;
+
 use alloc::vec::Vec;
 use log::info;
 
@@ -155,22 +157,20 @@ impl ElfHeader {
         );
     }
 
-    pub fn entry_start(&self, handoff_addr: u64) -> () {
-        let e_entry_u: usize = self.e_entry as usize;
-        let entry_ptr = e_entry_u as *const ();
-
-        let e_fn: extern "C" fn(u64) = unsafe { 
+    pub fn entry_start(&self, handoff_addr: *mut c_void) -> ! {
+        let entry_ptr = self.e_entry as *const ();
+        let e_fn: extern "sysv64" fn(*mut c_void) -> ! = unsafe { 
             core::mem::transmute(entry_ptr)
         };
 
         unsafe {
            e_fn(handoff_addr)
-        };
+        }
     }
 
     pub fn dump_info(&self) -> () {
-        info!("elf magic: {:x}{}{}{}", self.e_ident[0], self.e_ident[1] as char, self.e_ident[2] as char, self.e_ident[3] as char);
-        info!("elf entry address: 0x{:x}", self.e_entry);
+        info!("e_ident[0..3]: {:x}{}{}{}", self.e_ident[0], self.e_ident[1] as char, self.e_ident[2] as char, self.e_ident[3] as char);
+        info!("e_type: 0x{:x}", self.e_entry);
         info!("endian: 0x{:x}", self.e_ident[5] as u8);
         info!("program header offset: {} bytes", self.e_phoff);
         info!("section header offset: {} bytes", self.e_shoff);
