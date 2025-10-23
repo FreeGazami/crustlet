@@ -9,29 +9,29 @@ extern crate alloc;
 
 mod elf;
 
+use alloc::vec::Vec;
+use core::arch::asm;
+use core::ffi::c_void;
+use elf::*;
 use log::info;
+use uefi::boot::{MemoryDescriptor, MemoryType};
 use uefi::boot::{self, SearchType};
+use uefi::CString16;
+use uefi::fs::{FileSystem, FileSystemResult};
+use uefi_handoff::BootInfo;
+use uefi::{Identify, Result};
+use uefi::mem::memory_map::{MemoryMapOwned, MemoryMapIter, MemoryMap, MemoryMapKey, MemoryMapMut};
 use uefi::prelude::*;
 use uefi::proto::device_path::text::{AllowShortcuts, DevicePathToText, DisplayOnly};
 use uefi::proto::loaded_image::LoadedImage;
-use uefi::{Identify, Result};
-use uefi::CString16;
-use uefi::fs::{FileSystem, FileSystemResult};
-use elf::*;
-use alloc::vec::Vec;
-use uefi::mem::memory_map::{MemoryMapOwned, MemoryMapIter, MemoryMap, MemoryMapKey, MemoryMapMut};
-use uefi::boot::{MemoryDescriptor, MemoryType};
-use core::arch::asm;
-use uefi_handoff::BootInfo;
-use core::ffi::c_void;
+use uefi_raw::table::runtime::{RuntimeServices, ResetType};
+use uefi_raw::table::system::SystemTable;
 
 
 #[cfg(target_arch="x86_64")]
 #[entry]
 fn efi_main() -> Status {
     uefi::helpers::init().unwrap();
-
-    info!("start?");
 
     /* TODO: add parser, load kernel path and rootfs from rEnv.txt dynamically */
     let path: CString16 = CString16::try_from("gazami").unwrap();
@@ -66,40 +66,58 @@ fn efi_main() -> Status {
         return uefi::Status::COMPROMISED_DATA;
     }
 
-    // write address to register?
     let size = core::mem::size_of::<BootInfo>();
     let ptr = match boot::allocate_pool(MemoryType::LOADER_DATA, size) {
         Ok(pointer) => pointer,
         Err(error) => return Status::ABORTED,
     };
 
-    let boot_info = ptr.cast::<BootInfo>();
+    info!("allocated handoff: {}", ptr.as_ptr() as u64);
+
+    let boot_info: *mut BootInfo = ptr.as_ptr() as *mut BootInfo;
+
     let system_table = match uefi::table::system_table_raw() {
         Some(non_null) => {
-            non_null.as_ptr() as *mut u8
+            non_null.as_ptr() as *mut SystemTable
         },
         None => {
             return Status::ABORTED;
         }
     };
-    let image_handle = boot::image_handle().as_ptr();
 
-    info!("calling exit_boot_services");
+    let runtime_services: *mut c_void = unsafe { 
+        ((*system_table).runtime_services) as *mut c_void
+    };
+
+    let image_handle = boot::image_handle().as_ptr() as *mut c_void;
+
+    info!("calling exit_bootservices");
     let mut mm: MemoryMapOwned = unsafe {
         boot::exit_boot_services(None)
     };
 
     let mm_ptr = unsafe {
-        mm.buffer_mut().as_ptr()
+        mm.buffer_mut().as_ptr() as *mut c_void
     };
 
     unsafe {
-        (*boot_info.as_ptr()).image_handle = image_handle;
-        (*boot_info.as_ptr()).system_table = system_table;
-        (*boot_info.as_ptr()).mm_ptr = unsafe {mm.buffer_mut()};
+        (*boot_info).image_handle = image_handle;
+        (*boot_info).runtime_services = runtime_services;
+        (*boot_info).mm_ptr = mm_ptr;
     }
 
-    elf_header.entry_start(ptr.as_ptr());
+    // let b_system_table: *mut SystemTable = unsafe {(*boot_info.as_ptr()).system_table as *mut SystemTable};
+    // let runtime_services: *mut RuntimeServices = unsafe {(*b_system_table).runtime_services};
+
+    // let typed_runtime: *mut RuntimeServices = runtime_services as *mut RuntimeServices;
+
+    // unsafe {
+    //     ((*typed_runtime).reset_system)(ResetType::COLD, Status::SUCCESS, 0, core::ptr::null())
+    // }
+
+    unsafe {
+        elf_header.entry_start(boot_info as *mut c_void)
+    }
 
     return Status::ABORTED;
 }
