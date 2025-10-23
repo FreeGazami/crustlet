@@ -28,6 +28,7 @@ dependencies = [
  "serde",
  "toml",
  "uefi",
+ "uefi-raw",
  "uefi_handoff",
 ]
 
@@ -242,7 +243,7 @@ dependencies = [
 [[package]]
 name = "uefi_handoff"
 version = "0.1.0"
-source = "git+https://github.com/tomosnelli/uefi_handoff.git?branch=master#ab45a99c22e8d0bdb2680a9402e251d4da2f437e"
+source = "git+https://github.com/tomosnelli/uefi_handoff.git?branch=master#bf4d9c0bb704229e9d07cd02d7fff687048be9f5"
 dependencies = [
  "uefi-raw",
 ]
