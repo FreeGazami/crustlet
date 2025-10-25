@@ -26,6 +26,7 @@ use uefi::proto::device_path::text::{AllowShortcuts, DevicePathToText, DisplayOn
 use uefi::proto::loaded_image::LoadedImage;
 use uefi_raw::table::runtime::{RuntimeServices, ResetType};
 use uefi_raw::table::system::SystemTable;
+use uefi_raw::table::configuration::ConfigurationTable;
 
 
 #[cfg(target_arch="x86_64")]
@@ -83,24 +84,27 @@ fn efi_main() -> Status {
         }
     };
 
+    let image_handle = boot::image_handle().as_ptr() as *mut c_void;
+
     let runtime_services: *mut c_void = unsafe { 
         ((*system_table).runtime_services) as *mut c_void
     };
 
-    let image_handle = boot::image_handle().as_ptr() as *mut c_void;
+    let configuration_table: *mut ConfigurationTable = unsafe {(*system_table).configuration_table};
+
+    let config_table_p: *mut c_void = configuration_table as *mut c_void;
+
 
     let mut mm: MemoryMapOwned = unsafe {
         boot::exit_boot_services(None)
     };
 
-    let mm_ptr = unsafe {
-        mm.buffer_mut().as_ptr() as *mut c_void
-    };
-
     unsafe {
         (*boot_info).image_handle = image_handle;
         (*boot_info).runtime_services = runtime_services;
-        (*boot_info).mm_ptr = mm_ptr;
+        (*boot_info).mm = mm.buffer_mut().as_ptr() as *mut c_void;
+        (*boot_info).mm_len = mm.len();
+        (*boot_info).configuration_table = config_table_p;
     }
 
     unsafe {

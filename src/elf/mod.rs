@@ -215,7 +215,7 @@ impl ProgramHeader {
 #[cfg(target_arch="x86_64")]
 impl ProgramHeaderTable<'_> {
     pub fn load_segments(&self, file: &Vec<u8>) -> uefi::Status {
-        for (i, entry) in self.entries.iter().enumerate() {
+        for entry in self.entries.iter() {
             if entry.p_type == E_P_TYPE::PT_LOAD as u32 {
                 unsafe {
                     core::ptr::copy_nonoverlapping(

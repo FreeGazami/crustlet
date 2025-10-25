@@ -243,7 +243,7 @@ dependencies = [
 [[package]]
 name = "uefi_handoff"
 version = "0.1.0"
-source = "git+https://github.com/tomosnelli/uefi_handoff.git?branch=master#bf4d9c0bb704229e9d07cd02d7fff687048be9f5"
+source = "git+https://github.com/tomosnelli/uefi_handoff.git?branch=master#e6b3cd213c17c626b2f9e0e044aaacefeb4a2e5f"
 dependencies = [
  "uefi-raw",
 ]
