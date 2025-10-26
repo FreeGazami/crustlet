@@ -8,6 +8,7 @@
 extern crate alloc;
 
 mod elf;
+mod acpi;
 
 use alloc::vec::Vec;
 use core::arch::asm;
@@ -27,6 +28,8 @@ use uefi::proto::loaded_image::LoadedImage;
 use uefi_raw::table::runtime::{RuntimeServices, ResetType};
 use uefi_raw::table::system::SystemTable;
 use uefi_raw::table::configuration::ConfigurationTable;
+use uefi::table::cfg::ACPI2_GUID;
+use acpi::get_acpi_table_pointer;
 
 
 #[cfg(target_arch="x86_64")]
@@ -60,9 +63,7 @@ fn efi_main() -> Status {
         Err(error) => return error,
     };
 
-    let status = ph_table.load_segments(&bytes);
-
-    if status != uefi::Status::SUCCESS {
+    if ph_table.load_segments(&bytes) != uefi::Status::SUCCESS {
         info!("Issue loading program headers!");
         return uefi::Status::COMPROMISED_DATA;
     }
@@ -90,10 +91,10 @@ fn efi_main() -> Status {
         ((*system_table).runtime_services) as *mut c_void
     };
 
-    let configuration_table: *mut ConfigurationTable = unsafe {(*system_table).configuration_table};
-
-    let config_table_p: *mut c_void = configuration_table as *mut c_void;
-
+    let acpi_t_ptr: *mut ConfigurationTable = match get_acpi_table_pointer(system_table) {
+        Some(pointer) => pointer,
+        None => return uefi::Status::ABORTED,
+    };
 
     let mut mm: MemoryMapOwned = unsafe {
         boot::exit_boot_services(None)
@@ -104,7 +105,7 @@ fn efi_main() -> Status {
         (*boot_info).runtime_services = runtime_services;
         (*boot_info).mm = mm.buffer_mut().as_ptr() as *mut c_void;
         (*boot_info).mm_len = mm.len();
-        (*boot_info).configuration_table = config_table_p;
+        (*boot_info).acpi_table = acpi_t_ptr as *mut c_void;
     }
 
     unsafe {

@@ -7,7 +7,7 @@ edition = "2024"
 log = "0.4.28"
 uefi = { version = "0.35.0", features = ["alloc", "global_allocator", "logger", "qemu"] }
 uefi-raw = { version = "0.11.0" }
-uefi_handoff = { git = "https://github.com/tomosnelli/uefi_handoff.git", branch = "master" }
+uefi_handoff = { git = "https://github.com/FreeGazami/uefi_handoff.git", branch = "master" }
 
 [profile.dev]
 panic = "abort"
