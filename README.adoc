@@ -37,16 +37,3 @@ run image on qemu
 make run-qemu
 ----
 be noted that this generates a log file
-
-
-== Note to self
-memory to save
-[source,rust]
-----
-uefi::boot::MemoryType;
-uefi::boot::MemoryType::RUNTIME_SERVICES_CODE
-uefi::boot::MemoryType::RUNTIME_SERVICES_DATA
-uefi::boot::MemoryType::ACPI_RECLAIM
-uefi::boot::MemoryType::ACPI_NON_VOLATILE
-uefi::boot::MemoryType::MMIO_PORT_SPACE
-----
