@@ -7,7 +7,7 @@
 
 == Prerequisites
 * Linux Host
-* Nightly Rust
+* Nightly Rust (2025-09-12)
 * OVMF
 * qemu (x86_64)
 ** qemu-img
