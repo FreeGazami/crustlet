@@ -28,7 +28,11 @@ use uefi::proto::loaded_image::LoadedImage;
 use uefi_raw::table::runtime::{RuntimeServices, ResetType};
 use uefi_raw::table::system::SystemTable;
 use uefi_raw::table::configuration::ConfigurationTable;
+use uefi_raw::table::boot::{BootServices};
 use uefi::table::cfg::ACPI2_GUID;
+use uefi_raw::protocol::console::{GraphicsOutputProtocol, GraphicsOutputProtocolMode, GraphicsOutputModeInformation};
+
+
 use acpi::get_acpi_table_pointer;
 
 
@@ -85,6 +89,8 @@ fn efi_main() -> Status {
         }
     };
 
+    let boot_services: *mut BootServices = unsafe {(*system_table).boot_services};
+
     let image_handle = boot::image_handle().as_ptr() as *mut c_void;
 
     let runtime_services: *mut c_void = unsafe { 
@@ -96,6 +102,26 @@ fn efi_main() -> Status {
         None => return uefi::Status::ABORTED,
     };
 
+    let mut cvoid_gop: *mut c_void = core::ptr::null_mut();
+    let double_gop: *mut *mut c_void = &mut cvoid_gop as *mut *mut c_void;
+
+    unsafe {
+        match ((*boot_services).locate_protocol)(&GraphicsOutputProtocol::GUID, core::ptr::null_mut(), double_gop) {
+            uefi::Status::SUCCESS => (),
+            status_else => {
+                info!("Issue getting protocol: {:?}", status_else);
+                return status_else;
+            },
+        }
+    }
+
+    let gop: *mut GraphicsOutputProtocol = cvoid_gop as *mut GraphicsOutputProtocol;
+
+    // get gop stuff
+    let mode: *mut GraphicsOutputProtocolMode = unsafe{ (*gop).mode };
+
+    let mode_info: *mut GraphicsOutputModeInformation = unsafe {(*mode).info};
+
     let mut mm: MemoryMapOwned = unsafe {
         boot::exit_boot_services(None)
     };
@@ -106,8 +132,13 @@ fn efi_main() -> Status {
         (*boot_info).mm = mm.buffer_mut().as_ptr() as *mut c_void;
         (*boot_info).mm_len = mm.len();
         (*boot_info).acpi_table = acpi_t_ptr as *mut c_void;
+        // gop stuff
+        (*boot_info).frame_buffer_base = (*mode).frame_buffer_base;
+        (*boot_info).frame_buffer_size = (*mode).frame_buffer_size;
+        (*boot_info).info = *((*mode).info);
     }
 
+    // jump to elf e_entry address
     unsafe {
         elf_header.entry_start(boot_info as *mut c_void)
     }
