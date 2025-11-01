@@ -132,7 +132,6 @@ fn efi_main() -> Status {
         (*boot_info).mm = mm.buffer_mut().as_ptr() as *mut c_void;
         (*boot_info).mm_len = mm.len();
         (*boot_info).acpi_table = acpi_t_ptr as *mut c_void;
-        // gop stuff
         (*boot_info).frame_buffer_base = (*mode).frame_buffer_base;
         (*boot_info).frame_buffer_size = (*mode).frame_buffer_size;
         (*boot_info).info = *((*mode).info);
