@@ -52,10 +52,10 @@ fn creat_passoff_env() -> Result<(), Box<dyn std::error::Error>> {
     let build_triple = env::var("TARGET").expect("Tareget not set");
 
     let env_string: String = format!(
-        "PACKAGE_NAME={}\nPACKAGE_VERSION={}\nBIN_NAME={}\nTRIPLE={}\n",
+        "BOOT_PACKAGE_NAME={}\nBOOT_PACKAGE_VERSION={}\nBOOT_BIN_NAME={}\nBOOT_TRIPLE={}\n",
         package_name, package_version, bin_name, build_triple,
     );
-    let env_path = ".env";
+    let env_path = ".crustlet_env";
 
     let mut file = File::create(env_path)?;
     file.write_all(env_string.as_bytes())
