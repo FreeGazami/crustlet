@@ -3,6 +3,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
 use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(Deserialize)]
 struct CargoToml {
@@ -16,25 +17,20 @@ struct Package {
     version: String,
 }
 
+#[derive(Serialize)]
+struct BuildData {
+    package_name: String,
+    package_version: String,
+    bin_name: String,
+    triple: String,
+}
+
 #[derive(Deserialize)]
 struct Bin {
     name: String,
 }
 
-// create enum to handle string or string array
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-enum SignleOrArray {
-    Single(String),
-    Array(Vec<String>),
-}
-
-#[derive(Deserialize)]
-struct Build {
-    target: SignleOrArray,
-}
-
-fn creat_passoff_env() -> Result<(), Box<dyn std::error::Error>> {
+fn creat_passoff_json() -> Result<(), Box<dyn std::error::Error>> {
     let cargo_toml_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("Cargo.toml");
 
     let manifest = fs::read_to_string(&cargo_toml_path)?;
@@ -49,21 +45,23 @@ fn creat_passoff_env() -> Result<(), Box<dyn std::error::Error>> {
         _ => package_name,
     };
 
-    let build_triple = env::var("TARGET").expect("Tareget not set");
+    let triple = env::var("TARGET").expect("Tareget not set");
 
-    let env_string: String = format!(
-        "BOOT_PACKAGE_NAME={}\nBOOT_PACKAGE_VERSION={}\nBOOT_BIN_NAME={}\nBOOT_TRIPLE={}\n",
-        package_name, package_version, bin_name, build_triple,
-    );
-    let env_path = ".crustlet_env";
+    let build_data: BuildData = BuildData { 
+        package_name: package_name.to_string(),
+        package_version: package_version.to_string(),
+        bin_name: bin_name.to_string(),
+        triple: triple.to_string(),
+     };
 
-    let mut file = File::create(env_path)?;
-    file.write_all(env_string.as_bytes())
-        .expect("Failed to write to pass over file to setup post build script environment");
+    let json_string = serde_json::to_string(&build_data).expect("Serialization fail");
+
+    let mut file = File::create("crustlet-build.json").expect("Failed to create json file");
+    file.write_all(json_string.as_bytes()).expect("Failed to write to json file");
 
     Ok(())
 }
 
 fn main() {
-    creat_passoff_env().expect("Failed to create env file used to pass over variables");
+    creat_passoff_json().expect("Failed to create env file used to pass over variables");
 }

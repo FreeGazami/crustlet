@@ -1,7 +1,5 @@
 /target
 /kernel
 .env
-*.img
-*.log
 *.bin
-.*_env
+*-build.json
