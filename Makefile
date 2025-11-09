@@ -5,4 +5,4 @@ build:
 
 clean:
 	cargo clean
-	rm -f ./*.img ./*.log ./*.bin
+	rm -f ./*.img ./*.log ./*.bin ./*-build.json
