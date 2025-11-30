@@ -1,4 +1,3 @@
-kernel_img=crustlet
-kernel_path=/
-root=/dev/sda2
+kernel_img=gazami
+rootfs=/dev/sda2
 rootfstype=ext4

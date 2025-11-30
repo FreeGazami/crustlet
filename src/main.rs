@@ -9,8 +9,11 @@ extern crate alloc;
 
 mod elf;
 mod acpi;
+mod parser;
+mod configs;
 
 use alloc::vec::Vec;
+use alloc::collections::BTreeMap;
 use core::arch::asm;
 use core::ffi::c_void;
 use elf::*;
@@ -19,6 +22,7 @@ use uefi::boot::{MemoryDescriptor, MemoryType};
 use uefi::boot::{self, SearchType};
 use uefi::CString16;
 use uefi::fs::{FileSystem, FileSystemResult};
+use uefi::Error;
 use uefi_handoff::BootInfo;
 use uefi::{Identify, Result};
 use uefi::mem::memory_map::{MemoryMapOwned, MemoryMapIter, MemoryMap, MemoryMapKey, MemoryMapMut};
@@ -32,8 +36,35 @@ use uefi_raw::table::boot::{BootServices};
 use uefi::table::cfg::ACPI2_GUID;
 use uefi_raw::protocol::console::{GraphicsOutputProtocol, GraphicsOutputProtocolMode, GraphicsOutputModeInformation};
 
+use parser::*;
+
+use alloc::string::String;
+
 
 use acpi::get_acpi_table_pointer;
+
+fn load_file(path: &str) -> Result<Vec<u8>, uefi::Status> {
+    let path_CString16 = CString16::try_from(path).unwrap();
+    let img_fs = boot::get_image_file_system(boot::image_handle()).unwrap();
+    let mut fs_handle = FileSystem::new(img_fs);
+
+    let bytes: Vec<u8> = match fs_handle.read(path_CString16.as_ref()) {
+        Ok(vec) => vec,
+        Err(error) => {
+            let status = match error {
+                uefi::fs::Error::Io(_) => uefi_raw::Status::DEVICE_ERROR,
+                uefi::fs::Error::Path(_) => uefi_raw::Status::NOT_FOUND,
+                uefi::fs::Error::Utf8Encoding(_) => uefi_raw::Status::VOLUME_CORRUPTED,
+                _ => uefi_raw::Status::UNSUPPORTED,
+            };
+
+            // let e_final = uefi::Error::from(status);
+            return Err(uefi::Error::new(status, status));
+        },
+    };
+
+    Ok(bytes)
+}
 
 
 #[cfg(target_arch="x86_64")]
@@ -42,32 +73,31 @@ fn efi_main() -> Status {
     uefi::helpers::init().unwrap();
 
     /* TODO: add parser, load kernel path and rootfs from rEnv.txt dynamically */
-    let path: CString16 = CString16::try_from("gazami").unwrap();
-    let p_fs = boot::get_image_file_system(boot::image_handle()).unwrap();
+    let r_env_path = configs::ENVTXT;
+    let env_bytes: Vec<u8> = load_file(r_env_path).unwrap();
+    let mut configs: BTreeMap<String, String> = parser::parse_env(env_bytes);
 
-    let mut fs = FileSystem::new(p_fs);
-
-    let bytes: Vec<u8> = match fs.read(path.as_ref()) {
-        Ok(vector) => vector,
-        Err(error) => { 
-            info!("Isseu reading the file: {}", error);
-            return uefi::Status::VOLUME_CORRUPTED;
-        },
+    let kimg = match configs.get(configs::IMG_KEY) {
+        Some(value) => value,
+        None => configs::DEFAULT_IMG,
     };
 
+    info!("loading kernel: {}", kimg);
+    let kimg_bytes: Vec<u8> = load_file(&kimg).unwrap();
+
     let elf_header: &elf::ElfHeader = unsafe {
-        match elf::ElfHeader::new(&bytes) {
+        match elf::ElfHeader::new(&kimg_bytes) {
             Ok(ptr) => ptr,
             Err(error) => return error,
         }
     };
 
-    let ph_table: ProgramHeaderTable = match elf_header.new_ph_table(&bytes) {
+    let ph_table: ProgramHeaderTable = match elf_header.new_ph_table(&kimg_bytes) {
         Ok(table) => table,
         Err(error) => return error,
     };
 
-    if ph_table.load_segments(&bytes) != uefi::Status::SUCCESS {
+    if ph_table.load_segments(&kimg_bytes) != uefi::Status::SUCCESS {
         info!("Issue loading program headers!");
         return uefi::Status::COMPROMISED_DATA;
     }
