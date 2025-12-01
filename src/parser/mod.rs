@@ -1,7 +1,5 @@
 #![no_std]
 
-mod configs;
-
 use alloc::collections::BTreeMap;
 use uefi::Status;
 
@@ -14,7 +12,7 @@ pub fn parse_env(bytes: Vec<u8>) -> BTreeMap<String, String> {
     let mut configs: BTreeMap<String, String> = BTreeMap::new();
     let mut slice: &[u8] = bytes.as_slice();
 
-    while let Some(index) = slice.iter().position(|&b| b == '\n') {
+    while let Some(index) = slice.iter().position(|&b| b == b'\n') {
         let line_slice = &slice[..index];
 
         let clean_line = if line_slice.ends_with(b"\r") {
